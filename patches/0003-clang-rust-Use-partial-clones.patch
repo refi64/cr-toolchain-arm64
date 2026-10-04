@@ -1,0 +1,57 @@
+From c761d16b0c4ac0a7c0125d5ea3854bf5a9563309 Mon Sep 17 00:00:00 2001
+From: "re:fi.64" <hello@refi64.dev>
+Date: Sun, 4 Oct 2026 19:18:25 -0500
+Subject: [PATCH 3/3] clang/rust: Use partial clones
+
+---
+ tools/clang/scripts/build.py | 4 ++--
+ tools/rust/build_rust.py     | 4 +++-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
+index 0892b0afa25..8cd1e5eeb70 100755
+--- a/tools/clang/scripts/build.py
++++ b/tools/clang/scripts/build.py
+@@ -65,7 +65,7 @@ THIRD_PARTY_DIR = os.path.join(CHROMIUM_DIR, 'third_party')
+ LLVM_DIR = os.path.join(THIRD_PARTY_DIR, 'llvm')
+ COMPILER_RT_DIR = os.path.join(LLVM_DIR, 'compiler-rt')
+ LLVM_GIT_URL = (
+-  'https://chromium.googlesource.com/external/' + 'github.com/llvm/llvm-project'
++  'https://github.com/llvm/llvm-project'
+ )
+ LLVM_BOOTSTRAP_DIR = os.path.join(THIRD_PARTY_DIR, 'llvm-bootstrap')
+ LLVM_BOOTSTRAP_INSTALL_DIR = os.path.join(
+@@ -213,7 +213,7 @@ def CheckoutGitRepo(name, git_url, commit, dir):
+     print('Removing %s.' % dir)
+     RmTree(dir)
+ 
+-  clone_cmd = ['git', 'clone', git_url, dir]
++  clone_cmd = ['git', 'clone', '--filter=tree:0', '--no-checkout', git_url, dir]
+ 
+   if RunCommand(clone_cmd, fail_hard=False):
+     os.chdir(dir)
+diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
+index 4d7c55ebb77..5a2db60e839 100755
+--- a/tools/rust/build_rust.py
++++ b/tools/rust/build_rust.py
+@@ -134,7 +134,7 @@ EXCLUDED_TESTS_MAC_ARM64 = [
+ CLANG_SCRIPTS_DIR = os.path.join(CHROMIUM_DIR, 'tools', 'clang', 'scripts')
+ 
+ RUST_GIT_URL = (
+-    'https://chromium.googlesource.com/external/' + 'github.com/rust-lang/rust'
++    'https://github.com/rust-lang/rust'
+ )
+ 
+ RUST_SRC_DIR = os.path.join(THIRD_PARTY_DIR, 'rust-src')
+@@ -981,6 +981,8 @@ def main():
+         else:
+             cargo_bin = os.path.join(path, 'cargo', 'bin', 'cargo')
+ 
++        RunCommand(['git', '-C', RUST_SRC_DIR, 'config', 'clone.filterSubmodules', 'true'])
++
+         # Some Submodules are part of the workspace and need to exist (so we can
+         # read their Cargo.toml files) before we can vendor their deps.
+         submod_cmd = [
+-- 
+2.54.0
+

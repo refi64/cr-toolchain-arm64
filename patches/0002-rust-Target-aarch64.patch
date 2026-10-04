@@ -1,0 +1,120 @@
+From b1ed0211eeb5db8ab450aa0212c0d00e049b61d4 Mon Sep 17 00:00:00 2001
+From: "re:fi.64" <hello@refi64.dev>
+Date: Sun, 4 Oct 2026 19:16:41 -0500
+Subject: [PATCH 2/3] rust: Target aarch64
+
+---
+ tools/rust/build_bindgen.py           | 10 +++++-----
+ tools/rust/build_rust.py              | 12 ++++++------
+ tools/rust/cargo-config.toml.template |  2 +-
+ tools/rust/config.toml.template       |  2 +-
+ 4 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/tools/rust/build_bindgen.py b/tools/rust/build_bindgen.py
+index 4b3a155b4cd..d65a0ddd1c1 100755
+--- a/tools/rust/build_bindgen.py
++++ b/tools/rust/build_bindgen.py
+@@ -57,8 +57,8 @@ BINDGEN_CROSS_TARGET_BUILD_DIR = os.path.join(
+     THIRD_PARTY_DIR, 'rust-toolchain-intermediate', 'bindgen-target-build'
+ )
+ 
+-NCURSESW_CIPD_LINUX_AMD_PATH = 'infra/3pp/static_libs/ncursesw/linux-amd64'
+-NCURSESW_CIPD_LINUX_AMD_VERSION = '6.0.chromium.1'
++NCURSESW_CIPD_LINUX_ARM64_PATH = 'infra/3pp/static_libs/ncursesw/linux-arm64'
++NCURSESW_CIPD_LINUX_ARM64_VERSION = '6.0.chromium.1'
+ 
+ EXE = '.exe' if sys.platform == 'win32' else ''
+ 
+@@ -73,8 +73,8 @@ def FetchNcurseswLibrary():
+     assert sys.platform.startswith('linux')
+     ncursesw_dir = os.path.join(LLVM_BUILD_TOOLS_DIR, 'ncursesw')
+     ncursesw_url = (
+-        f'{CIPD_DOWNLOAD_URL}/{NCURSESW_CIPD_LINUX_AMD_PATH}'
+-        f'/+/version:2@{NCURSESW_CIPD_LINUX_AMD_VERSION}'
++        f'{CIPD_DOWNLOAD_URL}/{NCURSESW_CIPD_LINUX_ARM64_PATH}'
++        f'/+/version:2@{NCURSESW_CIPD_LINUX_ARM64_VERSION}'
+     )
+ 
+     if os.path.exists(ncursesw_dir):
+@@ -160,7 +160,7 @@ def RunCargo(cargo_args):
+ 
+     if sys.platform.startswith('linux'):
+         # We use these flags to avoid linking with the system libstdc++.
+-        sysroot = DownloadDebianSysroot('amd64')
++        sysroot = DownloadDebianSysroot('arm64')
+         sysroot_flag = f'--sysroot={sysroot}'
+         env['CFLAGS'] += f' {sysroot_flag}'
+         env['CXXFLAGS'] += f' {sysroot_flag}'
+diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
+index dad5732f511..4d7c55ebb77 100755
+--- a/tools/rust/build_rust.py
++++ b/tools/rust/build_rust.py
+@@ -187,8 +187,8 @@ RUST_BETA_SYSROOT_DIR = os.path.join(
+ # - A version tag looks like: `version:2@1.1.1j.chromium.2` and we
+ #   store the part after the `2@` here.
+ CIPD_DOWNLOAD_URL = f'https://chrome-infra-packages.appspot.com/dl'
+-OPENSSL_CIPD_LINUX_AMD_PATH = 'infra/3pp/static_libs/openssl/linux-amd64'
+-OPENSSL_CIPD_LINUX_AMD_VERSION = '1.1.1j.chromium.2'
++OPENSSL_CIPD_LINUX_ARM64_PATH = 'infra/3pp/static_libs/openssl/linux-arm64'
++OPENSSL_CIPD_LINUX_ARM64_VERSION = '1.1.1j.chromium.2'
+ OPENSSL_CIPD_MAC_AMD_PATH = 'infra/3pp/static_libs/openssl/mac-amd64'
+ OPENSSL_CIPD_MAC_AMD_VERSION = '1.1.1j.chromium.2'
+ OPENSSL_CIPD_MAC_ARM_PATH = 'infra/3pp/static_libs/openssl/mac-arm64'
+@@ -254,8 +254,8 @@ def AddOpenSSLToEnv():
+         )
+     else:
+         ssl_url = (
+-            f'{CIPD_DOWNLOAD_URL}/{OPENSSL_CIPD_LINUX_AMD_PATH}'
+-            f'/+/version:2@{OPENSSL_CIPD_LINUX_AMD_VERSION}'
++            f'{CIPD_DOWNLOAD_URL}/{OPENSSL_CIPD_LINUX_ARM64_PATH}'
++            f'/+/version:2@{OPENSSL_CIPD_LINUX_ARM64_VERSION}'
+         )
+ 
+     if os.path.exists(ssl_dir):
+@@ -659,7 +659,7 @@ def RustTargetTriple():
+     elif sys.platform == 'win32':
+         return 'x86_64-pc-windows-msvc'
+     else:
+-        return 'x86_64-unknown-linux-gnu'
++        return 'aarch64-unknown-linux-gnu'
+ 
+ 
+ # Build the LLVM libraries and install them .
+@@ -909,7 +909,7 @@ def main():
+         # Fetch sysroot we build rustc against. This ensures a minimum supported
+         # host (not Chromium target). Since the rustc linux package is for
+         # x86_64 only, that is the sole needed sysroot.
+-        debian_sysroot = DownloadDebianSysroot('amd64', args.skip_checkout)
++        debian_sysroot = DownloadDebianSysroot('arm64', args.skip_checkout)
+ 
+     # Require zlib compression.
+     if sys.platform == 'win32':
+diff --git a/tools/rust/cargo-config.toml.template b/tools/rust/cargo-config.toml.template
+index 93b0d1164f1..0c8c98528ce 100644
+--- a/tools/rust/cargo-config.toml.template
++++ b/tools/rust/cargo-config.toml.template
+@@ -17,7 +17,7 @@ target-applies-to-host = true
+ # is impossible without this feature.
+ host-config = true
+ 
+-[host.x86_64-unknown-linux-gnu]
++[host.aarch64-unknown-linux-gnu]
+ # Use the same sysroot for host artifacts as target artifacts. Target rustflags
+ # are configured via environment variables.
+ rustflags = ["-Clink-arg=--sysroot=$DEBIAN_SYSROOT"]
+diff --git a/tools/rust/config.toml.template b/tools/rust/config.toml.template
+index 6099852c69b..1c27c820d79 100644
+--- a/tools/rust/config.toml.template
++++ b/tools/rust/config.toml.template
+@@ -83,7 +83,7 @@ cxx = "$LLVM_BIN/clang++"
+ linker = "$LLVM_BIN/clang"
+ jemalloc = true
+ 
+-[target.x86_64-unknown-linux-gnu]
++[target.aarch64-unknown-linux-gnu]
+ llvm-config = "$LLVM_BIN/llvm-config"
+ # TODO(danakj): We don't ship this in the clang toolchain package.
+ # ranlib = "$LLVM_BIN/llvm-ranlib"
+-- 
+2.54.0
+

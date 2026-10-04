@@ -1,0 +1,125 @@
+name: Build toolchains
+
+on:
+  # schedule:
+  #   - cron: '0 */12 * * *'
+  workflow_dispatch:
+    inputs:
+      cr-revision:
+        description: 'Chromium revision'
+        required: false
+        type: string
+      dry-run:
+        description: 'Dry run'
+        required: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.ref }}-${{ inputs.cr-revision || 'main' }}
+    steps:
+      - name: Get workflow metadata
+        env:
+          CR_REVISION: ${{ inputs.cr-revision || '(defaulted to main)' }}
+          DRY_RUN: ${{ inputs.dry-run && 'yes' || 'no' }}
+        run: |
+          echo "::notice:: Chromium version: $CR_REVISION"
+          echo "::notice:: Dry run: $DRY_RUN"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install deps
+        uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
+        with:
+          aqua_version: 'v2.63.0'
+          aqua_opts: ''  # clear out the default -l
+
+      - name: Configure git
+        run: |
+          set -ex
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Initialize to Chromium ${{ inputs.cr-revision || 'main' }}
+        env:
+          CR_REVISION: ${{ inputs.cr-revision || 'main' }}
+        run: just init "$CR_REVISION" && just apply-patches
+
+      - name: Get the latest LLVM and Rust revisions
+        id: revisions
+        run: |
+          set -ex
+          echo "llvm-rev=$(just get-llvm-rev)" >> $GITHUB_OUTPUT
+          echo "rust-rev=$(just get-rust-rev)" >> $GITHUB_OUTPUT
+          echo "local-rev-suffix=$(just get-local-rev-suffix)" >> $GITHUB_OUTPUT
+
+      - name: Check for existing releases
+        id: existing
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LLVM_REV: ${{ steps.revisions.outputs.llvm-rev }}
+          RUST_REV: ${{ steps.revisions.outputs.rust-rev }}
+          LOCAL_REV_SUFFIX: ${{ steps.revisions.outputs.local-rev-suffix }}
+        run: |
+          if gh release view "clang-$LLVM_REV-$LOCAL_REV_SUFFIX" >/dev/null; then
+            echo "llvm=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+          if gh release view "rust-$RUST_REV-$LOCAL_REV_SUFFIX" >/dev/null; then
+            echo "rust=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch prebuilt LLVM
+        if: steps.existing.outputs.llvm && !steps.existing.outputs.rust
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LLVM_REV: ${{ steps.revisions.outputs.llvm-rev }}
+          LOCAL_REV_SUFFIX: ${{ steps.revisions.outputs.local-rev-suffix }}
+        run: |
+          set -ex
+          gh release download "clang-$LLVM_REV-$LOCAL_REV_SUFFIX"
+          mkdir -p chromium/third_party/llvm-install
+          sha256sum -c clang-*.sha256
+          tar -C chromium/third_party/llvm-install -xf clang-*.tar.xz
+
+      - name: Build docker image
+        if: '!steps.existing.outputs.llvm || !steps.existing.outputs.rust'
+        run: just image
+
+      - name: Build LLVM
+        if: '!steps.existing.outputs.llvm'
+        run: just build-llvm && just pack-llvm
+
+      - name: Build Rust
+        if: '!steps.existing.outputs.rust'
+        run: just build-rust && just pack-rust
+
+      - name: Release LLVM
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        if: >
+          !steps.existing.outputs.llvm
+          && (github.event_name == 'schedule'
+          || (github.event_name == 'workflow_dispatch' && !inputs.dry-run))
+        with:
+          tag_name: clang-${{ steps.revisions.outputs.llvm-rev }}-${{ steps.revisions.outputs.local-rev-suffix }}
+          target_commitish: ${{ github.sha }}
+          files: clang-*.tar.xz*
+          fail_on_unmatched_files: true
+
+      - name: Release Rust
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        if: >
+          !steps.existing.outputs.rust
+          && (github.event_name == 'schedule'
+          || (github.event_name == 'workflow_dispatch' && !inputs.dry-run))
+        with:
+          tag_name: rust-${{ steps.revisions.outputs.rust-rev }}-${{ steps.revisions.outputs.local-rev-suffix }}
+          target_commitish: ${{ github.sha }}
+          files: rust-toolchain-*.tar.xz*
+          fail_on_unmatched_files: true
