@@ -129,7 +129,8 @@ pack-llvm:
 
   clangrev=$({{quote(just_executable())}} get-llvm-rev)
   localrev=$({{quote(just_executable())}} get-local-rev-suffix)
-  dest={{quote(justfile_directory())}}/clang-"$clangrev"-"$localrev".tar.xz
+  desttar={{quote(justfile_directory())}}/clang-"$clangrev"-"$localrev".tar
+  dest=$desttar.xz
 
   [[ "$clangrev" == "$(< ../llvm-build/Release+Asserts/cr_build_revision)" ]]
   [[ "$clangrev" == "$(< ../llvm-install/cr_build_revision)" ]]
@@ -141,9 +142,12 @@ pack-llvm:
   done
 
   # use '-h' here to follow links...
-  tar -cvhf "$dest" "${files[@]}"
+  tar -cvhf "$desttar" "${files[@]}"
   # ...but omit it for adding things we want to keep as symlinks.
-  tar -rvf "$dest" "${symlinks[@]}"
+  tar -rvf "$desttar" "${symlinks[@]}"
+
+  # compress at the end, since tar can't append to a compressed archive
+  xz -f "$desttar"
 
   cd "$(dirname "$dest")"
   sha256sum "$(basename "$dest")" > "$dest.sha256"
@@ -166,7 +170,7 @@ pack-rust:
     fi
   done
 
-  tar -cvhf "$dest" *
+  tar -cJvhf "$dest" *
 
   cd "$(dirname "$dest")"
   sha256sum "$(basename "$dest")" > "$dest.sha256"
