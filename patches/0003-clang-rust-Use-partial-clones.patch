@@ -1,15 +1,15 @@
-From c761d16b0c4ac0a7c0125d5ea3854bf5a9563309 Mon Sep 17 00:00:00 2001
+From d712d98872ffbfabbf42b760cdf675a7ad1730cb Mon Sep 17 00:00:00 2001
 From: "re:fi.64" <hello@refi64.dev>
 Date: Sun, 4 Oct 2026 19:18:25 -0500
 Subject: [PATCH 3/3] clang/rust: Use partial clones
 
 ---
- tools/clang/scripts/build.py | 4 ++--
+ tools/clang/scripts/build.py | 6 +++---
  tools/rust/build_rust.py     | 4 +++-
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
-index 0892b0afa25..8cd1e5eeb70 100755
+index 0892b0afa25..56c2b84ced7 100755
 --- a/tools/clang/scripts/build.py
 +++ b/tools/clang/scripts/build.py
 @@ -65,7 +65,7 @@ THIRD_PARTY_DIR = os.path.join(CHROMIUM_DIR, 'third_party')
@@ -30,6 +30,15 @@ index 0892b0afa25..8cd1e5eeb70 100755
  
    if RunCommand(clone_cmd, fail_hard=False):
      os.chdir(dir)
+@@ -263,7 +263,7 @@ def GitCherryPick(
+       git_cmd + ['remote', 'add', git_remote_name, git_remote], fail_hard=False
+     )
+     RunCommand(
+-      git_cmd + ['fetch', '--recurse-submodules=no', git_remote_name, commit]
++      git_cmd + ['fetch', '--recurse-submodules=no', '--filter=tree:0', git_remote_name, commit]
+     )
+ 
+   if IsGitAncestorToHead(git_repository, commit):
 diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
 index 4d7c55ebb77..5a2db60e839 100755
 --- a/tools/rust/build_rust.py
