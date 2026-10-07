@@ -94,11 +94,11 @@ jobs:
 
       - name: Build LLVM
         if: '!steps.existing.outputs.llvm'
-        run: just build-llvm && just pack-llvm
+        run: just build-llvm pack-llvm
 
       - name: Build Rust
         if: '!steps.existing.outputs.rust'
-        run: just build-rust && just pack-rust
+        run: just build-rust build-rust-bindgen build-rust-crubit pack-rust
 
       - name: Release LLVM
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
