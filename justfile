@@ -123,8 +123,9 @@ pack-llvm:
     bin/clang++
     bin/ld.lld
     bin/wasm-ld
-    bin/llvm-strip
     bin/llvm-install-name-tool
+    bin/llvm-readelf
+    bin/llvm-strip
   )
 
   clangrev=$({{quote(just_executable())}} get-llvm-rev)
