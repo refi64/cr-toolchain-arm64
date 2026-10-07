@@ -132,6 +132,7 @@ pack-llvm:
   localrev=$({{quote(just_executable())}} get-local-rev-suffix)
   desttar={{quote(justfile_directory())}}/clang-"$clangrev"-"$localrev".tar
   dest=$desttar.xz
+  destfmt={{quote(justfile_directory())}}/clang-format-"$clangrev"-"$localrev".tar.xz
 
   [[ "$clangrev" == "$(< ../llvm-build/Release+Asserts/cr_build_revision)" ]]
   [[ "$clangrev" == "$(< ../llvm-install/cr_build_revision)" ]]
@@ -150,8 +151,12 @@ pack-llvm:
   # compress at the end, since tar can't append to a compressed archive
   xz -f "$desttar"
 
+  # clang-format exists on its own
+  tar -cJvhf "$destfmt" bin/clang-format
+
   cd "$(dirname "$dest")"
   sha256sum "$(basename "$dest")" > "$dest.sha256"
+  sha256sum "$(basename "$destfmt")" > "$destfmt.sha256"
 
 # https://source.chromium.org/chromium/chromium/src/+/main:tools/rust/package_rust.py;drc=4d2165ac6386b2c7c9820c566e43d85db0ca09c1
 [working-directory: 'chromium/third_party/rust-toolchain']
