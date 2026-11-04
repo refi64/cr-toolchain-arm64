@@ -7,13 +7,7 @@ _init_clone:
 
 [working-directory: 'chromium']
 init $version: _init_clone
-  git config core.sparseCheckout true
-  echo 'tools/clang/scripts/' > .git/info/sparse-checkout
-  echo 'tools/rust/' >> .git/info/sparse-checkout
-  # TODO: remove the following two lines once on a commit at or past:
-  # 6dac470f6ba4c6d3859f4d683f805c1a6eedee8a
-  echo 'tools/crates/*.py' >> .git/info/sparse-checkout
-  echo 'build/*.py' >> .git/info/sparse-checkout
+  git sparse-checkout set tools/clang/scripts/ tools/rust/
   git checkout "$version"
   git branch -f upstream
 
